@@ -1,0 +1,45 @@
+name: Build musl static multi-arch
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goarch: [ amd64, arm64 ]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "1.22"
+
+    - name: Install musl tools
+      run: sudo apt-get update && sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
+
+    - name: Build static musl
+      env:
+        CGO_ENABLED: "1"
+      run: |
+        if [ "${{ matrix.goarch }}" = "amd64" ]; then
+          export CC=musl-gcc
+          OUT=gotify-linux-amd64
+        else
+          # 交叉编译 arm64（使用 musl 的 aarch64 交叉编译器，如果 runner 没有 musl 版本可用，可改用容器方案）
+          export CC=aarch64-linux-gnu-gcc
+          OUT=gotify-linux-arm64
+        fi
+        GOOS=linux GOARCH=${{ matrix.goarch }} go build -tags netgo -ldflags '-extldflags "-static"' -o "$OUT"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gotify-musl-${{ matrix.goarch }}
+        path: ./gotify-linux-${{ matrix.goarch }}

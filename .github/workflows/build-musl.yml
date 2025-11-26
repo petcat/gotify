@@ -1,0 +1,30 @@
+name: Build in Alpine (musl)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.20
+
+    steps:
+    - name: Install build deps in container
+      run: |
+        apk add --no-cache git go build-base
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Build static
+      run: |
+        export CGO_ENABLED=1
+        export CC=musl-gcc
+        go version
+        go build -tags netgo -ldflags '-extldflags "-static"' -o gotify-linux-amd64
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gotify-musl-amd64
+        path: ./gotify-linux-amd64

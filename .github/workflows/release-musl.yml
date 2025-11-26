@@ -1,0 +1,32 @@
+name: Release musl binary
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.20   # 使用 Alpine 容器，确保 musl 环境
+
+    steps:
+    - name: Install build deps
+      run: |
+        apk add --no-cache git go build-base musl-dev
+
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Build static musl binary
+      run: |
+        export CGO_ENABLED=1
+        export CC=musl-gcc
+        go version
+        go build -tags netgo -ldflags '-extldflags "-static"' -o gotify-linux-amd64
+
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: gotify-linux-amd64
